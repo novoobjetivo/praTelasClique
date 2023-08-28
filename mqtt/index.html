@@ -1,0 +1,75 @@
+<html>
+<head>
+    <title>WebSocket MQTT Client</title>
+    <script src="mqttws31.js"></script>
+</head>
+<body>
+    <h1>WebSocket MQTT Client</h1>
+    <div id="log"></div>
+    <button onclick="connect()">Connect</button>
+    <button onclick="publish()">Publish</button>
+
+    <script>
+        var client;
+        var topicoPraReceber = "test/topicoQueNiguemPensou"
+        var topicoPraEnviar = "test/topicoQueNiguemPensou"
+        var logDiv = document.getElementById('log');
+        var reconnectInterval = 5000; // Intervalo de tentativa de reconexão em milissegundos
+        var reconnectTimeout;
+
+        function log(message) {
+            logDiv.innerHTML += message + '<br>';
+        }
+
+        function connect() {
+            var clientId = 'client_' + Math.random().toString(16).substr(2, 8);
+            client = new Paho.MQTT.Client('mqtt-dashboard.com', 8884, clientId);
+            
+            client.onConnectionLost = onConnectionLost;
+            client.onMessageArrived = onMessageArrived;
+
+            var options = {
+                useSSL: true,
+                onSuccess: onConnect,
+                onFailure: function(message) {
+                    log('Connection failed: ' + message.errorMessage);
+                    // Tentar reconectar após um intervalo
+                    reconnectTimeout = setTimeout(connect, reconnectInterval);
+                }
+            };
+
+            client.connect(options);
+        }
+
+        function onConnect() {
+            clearTimeout(reconnectTimeout); // Limpar a tentativa de reconexão pendente
+            log('Connected to MQTT broker');
+            // Subscribe to a topic
+            client.subscribe(topicoPraReceber);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                log('Connection lost: ' + responseObject.errorMessage);
+                // Tentar reconectar após um intervalo
+                reconnectTimeout = setTimeout(connect, reconnectInterval);
+            }
+        }
+
+        function onMessageArrived(message) {
+            log('Received message: ' + message.payloadString);
+        }
+
+        function publish() {
+            if (client.isConnected()) {
+                var message = new Paho.MQTT.Message('Hello, MQTT!');
+                message.destinationName = topicoPraEnviar;
+                client.send(message);
+            } else {
+                log('Not connected to MQTT broker');
+            }
+        }
+        connect();
+    </script>
+</body>
+</html>
